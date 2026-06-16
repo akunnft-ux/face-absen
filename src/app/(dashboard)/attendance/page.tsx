@@ -63,12 +63,16 @@ export default function AttendancePage() {
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: "user" },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
       })
       if (videoRef.current) videoRef.current.srcObject = stream
       streamRef.current = stream
-    } catch {
-      setError("Kamera tidak dapat diakses.")
+    } catch (e) {
+      const err = e as DOMException
+      if (err.name === "NotAllowedError") setError("Izinkan akses kamera di pengaturan browser.")
+      else if (err.name === "NotFoundError") setError("Kamera tidak ditemukan.")
+      else if (err.name === "NotReadableError") setError("Kamera sedang digunakan aplikasi lain.")
+      else setError("Kamera tidak dapat diakses.")
     }
   }, [])
 
