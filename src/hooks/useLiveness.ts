@@ -9,14 +9,20 @@ const LIVENESS_TIMEOUT = 8000
 export function useLiveness() {
   const [status, setStatus] = useState<"idle" | "watching" | "detected" | "failed" | "timeout">("idle")
   const [blinkCount, setBlinkCount] = useState(0)
+  const statusRef = useRef(status)
   const earHistoryRef = useRef<number[]>([])
   const consecutiveClosedRef = useRef(0)
   const totalBlinksRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+
   const reset = useCallback(() => {
     setStatus("idle")
     setBlinkCount(0)
+    statusRef.current = "idle"
     earHistoryRef.current = []
     consecutiveClosedRef.current = 0
     totalBlinksRef.current = 0
@@ -30,6 +36,7 @@ export function useLiveness() {
     timerRef.current = setTimeout(() => {
       if (totalBlinksRef.current < MIN_BLINKS) {
         setStatus("timeout")
+        statusRef.current = "timeout"
       }
     }, LIVENESS_TIMEOUT)
   }, [reset])
@@ -55,6 +62,7 @@ export function useLiveness() {
         if (totalBlinksRef.current >= MIN_BLINKS) {
           clearTimeout(timerRef.current)
           setStatus("detected")
+          statusRef.current = "detected"
         }
       }
       consecutiveClosedRef.current = 0
@@ -73,6 +81,7 @@ export function useLiveness() {
   return {
     status,
     blinkCount,
+    statusRef,
     start,
     reset,
     processFrame,

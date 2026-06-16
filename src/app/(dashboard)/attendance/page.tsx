@@ -38,6 +38,8 @@ export default function AttendancePage() {
   } | null>(null)
 
   const liveness = useLiveness()
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   const loadModels = useCallback(async () => {
     setState("loading_model")
@@ -119,8 +121,10 @@ export default function AttendancePage() {
     await startCamera()
   }, [liveness, startCamera])
 
+  const detectLoopRef = useRef<() => void>(null)
+
   useEffect(() => {
-    if (state !== "camera" || !faceLoaded || !videoRef.current || !canvasRef.current) return
+    if (stateRef.current !== "camera" || !faceLoaded || !videoRef.current || !canvasRef.current) return
 
     const faceapi = faceapiRef.current!
     const video = videoRef.current!
@@ -130,12 +134,25 @@ export default function AttendancePage() {
     let descriptor: Float32Array | null = null
 
     const detect = async () => {
-      if (!streamRef.current) return
+      if (stateRef.current !== "camera" && stateRef.current !== "liveness") {
+        return
+      }
 
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor()
+      if (!streamRef.current) {
+        animRef.current = requestAnimationFrame(detect)
+        return
+      }
+
+      let detection: any
+      try {
+        detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor()
+      } catch {
+        animRef.current = requestAnimationFrame(detect)
+        return
+      }
 
       const ctx = canvas.getContext("2d")!
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -167,14 +184,14 @@ export default function AttendancePage() {
         const ear = calculateEAR(detection.landmarks)
         liveness.processFrame(ear)
 
-        if (liveness.status === "timeout" || liveness.status === "failed") {
+        if (liveness.statusRef.current === "timeout" || liveness.statusRef.current === "failed") {
           setError("Tidak mendeteksi kedipan alami. Coba lagi.")
           stopCamera()
           setState("failed")
           return
         }
 
-        if (liveness.isLive) {
+        if (liveness.statusRef.current === "detected") {
           setState("matching")
 
           const tempCanvas = document.createElement("canvas")
@@ -185,7 +202,7 @@ export default function AttendancePage() {
 
           try {
             const res = await faceCheckIn(
-              Array.from(descriptor),
+              Array.from(descriptor!),
               imageData,
               liveness.getScore(),
               true
@@ -212,13 +229,16 @@ export default function AttendancePage() {
         setFaceDetected(false)
       }
 
-      animRef.current = requestAnimationFrame(detect)
+      if (stateRef.current === "camera" || stateRef.current === "liveness") {
+        animRef.current = requestAnimationFrame(detect)
+      }
     }
 
+    detectLoopRef.current = detect
     detect()
 
     return () => cancelAnimationFrame(animRef.current)
-  }, [state, faceLoaded, liveness, calculateEAR, stopCamera])
+  }, [faceLoaded, calculateEAR, stopCamera])
 
   return (
     <div className="space-y-6">
