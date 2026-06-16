@@ -5,23 +5,21 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useLiveness } from "@/hooks/useLiveness"
 import { faceCheckIn } from "@/actions/face-attendance"
 import {
   Camera,
   CheckCircle,
   XCircle,
   Loader2,
-  Eye,
   User,
 } from "lucide-react"
 
 const MODEL_URL = "/models"
+const STABLE_FRAMES = 5
 
-type State = "init" | "loading_model" | "camera" | "liveness" | "matching" | "success" | "failed"
+type State = "init" | "loading_model" | "camera" | "matching" | "success" | "failed"
 
 export default function AttendancePage() {
-  const supabase = createClient()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -32,15 +30,10 @@ export default function AttendancePage() {
   const [faceLoaded, setFaceLoaded] = useState(false)
   const [faceDetected, setFaceDetected] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [currentEar, setCurrentEar] = useState(0)
   const [result, setResult] = useState<{
     employee: { id: string; nip: string; nama_lengkap: string; foto_registrasi_url: string }
     similarity: number
   } | null>(null)
-
-  const liveness = useLiveness()
-  const stateRef = useRef(state)
-  stateRef.current = state
 
   const loadModels = useCallback(async () => {
     setState("loading_model")
@@ -53,7 +46,6 @@ export default function AttendancePage() {
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ])
       setFaceLoaded(true)
-      setState("camera")
     } catch {
       setError("Gagal memuat model pengenalan wajah.")
     }
@@ -91,53 +83,29 @@ export default function AttendancePage() {
   }, [])
 
   useEffect(() => {
-    if (state === "camera" && faceLoaded) {
-      startCamera()
-    }
-  }, [state, faceLoaded, startCamera])
-
-  useEffect(() => {
     return stopCamera
   }, [stopCamera])
-
-  const calculateEAR = useCallback(
-    (landmarks: any): number => {
-      const faceapi = faceapiRef.current
-      if (!faceapi) return 0
-      const leftEye = landmarks.positions.slice(36, 42)
-      const rightEye = landmarks.positions.slice(42, 48)
-      const dist = (a: any, b: any) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
-      const leftEAR = (dist(leftEye[1], leftEye[5]) + dist(leftEye[2], leftEye[4])) / (2 * dist(leftEye[0], leftEye[3]))
-      const rightEAR = (dist(rightEye[1], rightEye[5]) + dist(rightEye[2], rightEye[4])) / (2 * dist(rightEye[0], rightEye[3]))
-      return (leftEAR + rightEAR) / 2
-    },
-    []
-  )
 
   const startCheck = useCallback(async () => {
     setError(null)
     setResult(null)
     setState("camera")
-    liveness.reset()
     await startCamera()
-  }, [liveness, startCamera])
-
-  const detectLoopRef = useRef<() => void>(null)
+  }, [startCamera])
 
   useEffect(() => {
-    if (stateRef.current !== "camera" || !faceLoaded || !videoRef.current || !canvasRef.current) return
+    if (state !== "camera" || !faceLoaded || !videoRef.current || !canvasRef.current) return
 
     const faceapi = faceapiRef.current!
     const video = videoRef.current!
     const canvas = canvasRef.current!
 
-    let livenessStarted = false
     let descriptor: Float32Array | null = null
+    let stableCount = 0
+    let matched = false
 
     const detect = async () => {
-      if (stateRef.current !== "camera" && stateRef.current !== "liveness") {
-        return
-      }
+      if (matched) return
 
       if (!streamRef.current) {
         animRef.current = requestAnimationFrame(detect)
@@ -176,24 +144,9 @@ export default function AttendancePage() {
         setFaceDetected(true)
         descriptor = detection.descriptor
 
-        if (!livenessStarted) {
-          liveness.start()
-          livenessStarted = true
-          setState("liveness")
-        }
-
-        const ear = calculateEAR(detection.landmarks)
-        setCurrentEar(ear)
-        liveness.processFrame(ear)
-
-        if (liveness.statusRef.current === "timeout" || liveness.statusRef.current === "failed") {
-          setError("Tidak mendeteksi kedipan alami. Coba lagi.")
-          stopCamera()
-          setState("failed")
-          return
-        }
-
-        if (liveness.statusRef.current === "detected") {
+        stableCount++
+        if (stableCount >= STABLE_FRAMES) {
+          matched = true
           setState("matching")
 
           const tempCanvas = document.createElement("canvas")
@@ -206,7 +159,7 @@ export default function AttendancePage() {
             const res = await faceCheckIn(
               Array.from(descriptor!),
               imageData,
-              liveness.getScore(),
+              1,
               true
             )
 
@@ -226,22 +179,20 @@ export default function AttendancePage() {
           }
 
           stopCamera()
+          return
         }
       } else {
         setFaceDetected(false)
-        setCurrentEar(0)
+        stableCount = 0
       }
 
-      if (stateRef.current === "camera" || stateRef.current === "liveness") {
-        animRef.current = requestAnimationFrame(detect)
-      }
+      animRef.current = requestAnimationFrame(detect)
     }
 
-    detectLoopRef.current = detect
     detect()
 
     return () => cancelAnimationFrame(animRef.current)
-  }, [faceLoaded, calculateEAR, stopCamera])
+  }, [state, faceLoaded, startCamera, stopCamera, faceCheckIn])
 
   return (
     <div className="space-y-6">
@@ -263,7 +214,7 @@ export default function AttendancePage() {
             <h2 className="mt-6 text-xl font-semibold">Absensi Face Recognition</h2>
             <p className="mt-2 text-sm text-muted-foreground text-center max-w-md">
               Posisikan wajah di tengah frame dengan pencahayaan cukup.
-              Sistem akan mendeteksi kedipan alami untuk verifikasi.
+              Sistem akan mencocokkan wajah dengan data registrasi.
             </p>
             <Button size="lg" className="mt-8" onClick={startCheck}>
               <Camera className="mr-2 h-5 w-5" />
@@ -273,7 +224,7 @@ export default function AttendancePage() {
         </Card>
       )}
 
-      {(state === "loading_model" || state === "camera" || state === "liveness" || state === "matching") && (
+      {(state === "loading_model" || state === "camera" || state === "matching") && (
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -283,8 +234,6 @@ export default function AttendancePage() {
                   ? "Memuat model face recognition..."
                   : state === "camera"
                   ? "Arahkan wajah ke kamera"
-                  : state === "liveness"
-                  ? "Berkedip secara alami..."
                   : "Mencocokkan wajah..."}
               </CardDescription>
             </CardHeader>
@@ -318,14 +267,6 @@ export default function AttendancePage() {
                       {faceDetected ? "Wajah terdeteksi" : "Mencari wajah..."}
                     </Badge>
                   )}
-                  {state === "liveness" && (
-                    <Badge variant="warning">
-                      <Eye className="mr-1 h-3 w-3" />
-                      {liveness.blinkCount > 0
-                        ? `${liveness.blinkCount} kedipan`
-                        : "Tunggu kedipan..."}
-                    </Badge>
-                  )}
                   {state === "matching" && (
                     <Badge variant="default">
                       <Loader2 className="mr-1 h-3 w-3 animate-spin" />
@@ -333,14 +274,6 @@ export default function AttendancePage() {
                     </Badge>
                   )}
                 </div>
-                {(state === "camera" || state === "liveness") && faceDetected && (
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>EAR</span>
-                    <span className={currentEar > 0.22 ? "text-emerald-500" : "text-amber-500"}>
-                      {currentEar.toFixed(3)}
-                    </span>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -357,18 +290,7 @@ export default function AttendancePage() {
                 <div>
                   <p className="text-sm font-medium">Face Recognition</p>
                   <p className="text-xs text-muted-foreground">
-                    Pembacaan wajah + anti-spoofing blink detection
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
-                <div className="rounded-full bg-emerald-100 p-2 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400">
-                  <Eye className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Liveness Detection</p>
-                  <p className="text-xs text-muted-foreground">
-                    Mendeteksi kedipan alami untuk mencegah foto palsu
+                    Pembacaan wajah untuk absensi cepat
                   </p>
                 </div>
               </div>
@@ -421,7 +343,6 @@ export default function AttendancePage() {
         </Card>
       )}
 
-      {/* Today's attendance summary */}
       <TodaySummary />
     </div>
   )
