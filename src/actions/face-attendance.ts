@@ -1,6 +1,6 @@
 "use server"
 
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export async function faceCheckIn(
@@ -10,12 +10,7 @@ export async function faceCheckIn(
   livenessPassed: boolean,
   location?: { lat: number; lng: number }
 ) {
-  const supabase = await createServerSupabaseClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
+  const supabase = createAdminClient()
 
   const { data: matchResult, error: matchError } = await supabase.rpc("match_face", {
     query_descriptor: descriptor,
@@ -77,7 +72,7 @@ export async function faceCheckIn(
 }
 
 export async function getTodayAttendance() {
-  const supabase = await createServerSupabaseClient()
+  const supabase = createAdminClient()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -96,7 +91,7 @@ export async function getAttendanceHistory(
   endDate?: string,
   employeeId?: string
 ) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = createAdminClient()
   let query = supabase
     .from("face_attendance")
     .select("*, employee:employees(*)")
@@ -116,7 +111,7 @@ export async function getAttendanceHistory(
 }
 
 export async function getMonthlyRecap(year: number, month: number) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = createAdminClient()
   const startDate = new Date(year, month - 1, 1).toISOString()
   const endDate = new Date(year, month, 0, 23, 59, 59, 999).toISOString()
 

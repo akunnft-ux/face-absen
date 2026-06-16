@@ -1,6 +1,6 @@
 "use server"
 
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 export async function registerFace(
@@ -9,17 +9,12 @@ export async function registerFace(
   imageBase64: string,
   qualityScore: number
 ) {
-  const supabase = await createServerSupabaseClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
+  const supabase = createAdminClient()
 
   const filename = `${employeeId}/${crypto.randomUUID()}.jpg`
   const buffer = Buffer.from(imageBase64.split(",")[1], "base64")
 
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from("face-photos")
     .upload(`registrations/${filename}`, buffer, {
       contentType: "image/jpeg",
