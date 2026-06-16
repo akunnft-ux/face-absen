@@ -4,25 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as AppUser } from "@/lib/types"
 
-interface SessionUser {
-  id: string
-  email?: string
-  created_at?: string
-  user_metadata?: Record<string, unknown>
-}
-
-function sessionToAppUser(sessionUser: SessionUser): AppUser {
-  return {
-    id: sessionUser.id,
-    email: sessionUser.email ?? "",
-    full_name: (sessionUser.user_metadata?.full_name as string) ?? "",
-    role: (sessionUser.user_metadata?.role as AppUser["role"]) ?? "petugas",
-    employee_id: null,
-    created_at: sessionUser.created_at ?? new Date().toISOString(),
-    updated_at: sessionUser.created_at ?? new Date().toISOString(),
-  }
-}
-
 export function useAuth() {
   const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,56 +13,43 @@ export function useAuth() {
     const supabase = supabaseRef.current
     let mounted = true
 
-    async function updateFromSession(sessionUser: SessionUser) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", sessionUser.id)
-        .single()
-
-      if (profile && mounted) {
-        setUser(profile as AppUser)
-      } else if (mounted) {
-        setUser(sessionToAppUser(sessionUser))
+    function buildUser(sessionUser: { id: string; email?: string; created_at?: string; user_metadata?: Record<string, unknown> }): AppUser {
+      return {
+        id: sessionUser.id,
+        email: sessionUser.email ?? "",
+        full_name: (sessionUser.user_metadata?.full_name as string) ?? "",
+        role: (sessionUser.user_metadata?.role as AppUser["role"]) ?? "petugas",
+        employee_id: null,
+        created_at: sessionUser.created_at ?? new Date().toISOString(),
+        updated_at: sessionUser.created_at ?? new Date().toISOString(),
       }
     }
 
     async function init() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
+      const { data: { session } } = await supabase.auth.getSession()
       if (!mounted) return
-
-      if (session?.user) {
-        await updateFromSession(session.user)
-      }
-
+      if (session?.user) setUser(buildUser(session.user))
       setLoading(false)
     }
 
     init()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
         setUser(null)
       } else if (session?.user && mounted) {
-        await updateFromSession(session.user)
+        setUser(buildUser(session.user))
       }
       setLoading(false)
     })
 
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
+    return () => { mounted = false; subscription.unsubscribe() }
   }, [])
 
   const signOut = useCallback(async () => {
-    const { logout } = await import("@/actions/auth")
-    await logout()
+    const supabase = supabaseRef.current
+    await supabase.auth.signOut()
+    window.location.href = "/login"
   }, [])
 
   return { user, loading, signOut }
