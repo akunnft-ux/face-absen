@@ -130,7 +130,17 @@ export default function AttendancePage() {
       if (detection) {
         const dims = faceapi.matchDimensions(canvas, video, true)
         const resized = faceapi.resizeResults(detection, dims)
-        faceapi.draw.drawDetections(canvas, resized)
+        new faceapi.draw.DrawBox(resized.detection.box, {
+          boxColor: "#22c55e",
+          lineWidth: 3,
+          label: (resized.detection.score * 100).toFixed(0) + "%",
+          drawLabelOptions: {
+            backgroundColor: "#22c55e",
+            fontColor: "#fff",
+            fontSize: 14,
+            padding: 6,
+          },
+        }).draw(canvas)
 
         setFaceDetected(true)
         descriptor = detection.descriptor
