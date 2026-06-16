@@ -88,6 +88,12 @@ export default function AttendancePage() {
   }, [])
 
   useEffect(() => {
+    if (state === "camera" && faceLoaded) {
+      startCamera()
+    }
+  }, [state, faceLoaded, startCamera])
+
+  useEffect(() => {
     return stopCamera
   }, [stopCamera])
 
