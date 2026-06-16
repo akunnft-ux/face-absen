@@ -2,16 +2,20 @@
 
 import { useRef, useCallback, useState, useEffect } from "react"
 
-const EAR_THRESHOLD = 0.22
-const MIN_BLINKS = 1
+const BASELINE_FRAMES = 10
+const DROP_RATIO = 0.75
+const MIN_CONSECUTIVE_LOW = 2
 const LIVENESS_TIMEOUT = 12000
 
 export function useLiveness() {
   const [status, setStatus] = useState<"idle" | "watching" | "detected" | "failed" | "timeout">("idle")
   const [blinkCount, setBlinkCount] = useState(0)
   const statusRef = useRef(status)
-  const earHistoryRef = useRef<number[]>([])
-  const consecutiveClosedRef = useRef(0)
+  const baselineSumRef = useRef(0)
+  const baselineCountRef = useRef(0)
+  const baselineReadyRef = useRef(false)
+  const baselineRef = useRef(0.3)
+  const lowEarFramesRef = useRef(0)
   const totalBlinksRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -23,8 +27,10 @@ export function useLiveness() {
     setStatus("idle")
     setBlinkCount(0)
     statusRef.current = "idle"
-    earHistoryRef.current = []
-    consecutiveClosedRef.current = 0
+    baselineSumRef.current = 0
+    baselineCountRef.current = 0
+    baselineReadyRef.current = false
+    lowEarFramesRef.current = 0
     totalBlinksRef.current = 0
     clearTimeout(timerRef.current)
   }, [])
@@ -34,7 +40,7 @@ export function useLiveness() {
     setStatus("watching")
 
     timerRef.current = setTimeout(() => {
-      if (totalBlinksRef.current < MIN_BLINKS) {
+      if (totalBlinksRef.current < 1) {
         setStatus("timeout")
         statusRef.current = "timeout"
       }
@@ -42,35 +48,39 @@ export function useLiveness() {
   }, [reset])
 
   const processFrame = useCallback((ear: number | null) => {
-    if (ear === null) {
-      earHistoryRef.current.push(0)
+    if (ear === null || ear === 0) return
+
+    if (!baselineReadyRef.current) {
+      baselineSumRef.current += ear
+      baselineCountRef.current++
+      if (baselineCountRef.current >= BASELINE_FRAMES) {
+        baselineRef.current = baselineSumRef.current / baselineCountRef.current
+        baselineReadyRef.current = true
+      }
       return
     }
 
-    earHistoryRef.current.push(ear)
-    if (earHistoryRef.current.length > 30) {
-      earHistoryRef.current.shift()
-    }
+    const threshold = baselineRef.current * DROP_RATIO
 
-    if (ear < EAR_THRESHOLD) {
-      consecutiveClosedRef.current++
+    if (ear < threshold) {
+      lowEarFramesRef.current++
     } else {
-      if (consecutiveClosedRef.current >= 1 && consecutiveClosedRef.current <= 10) {
+      if (lowEarFramesRef.current >= MIN_CONSECUTIVE_LOW) {
         totalBlinksRef.current++
         setBlinkCount(totalBlinksRef.current)
 
-        if (totalBlinksRef.current >= MIN_BLINKS) {
+        if (totalBlinksRef.current >= 1) {
           clearTimeout(timerRef.current)
           setStatus("detected")
           statusRef.current = "detected"
         }
       }
-      consecutiveClosedRef.current = 0
+      lowEarFramesRef.current = 0
     }
   }, [])
 
   const getScore = useCallback(() => {
-    if (totalBlinksRef.current >= MIN_BLINKS) return Math.min(1, totalBlinksRef.current / 3)
+    if (totalBlinksRef.current >= 1) return Math.min(1, totalBlinksRef.current / 3)
     return 0
   }, [])
 
