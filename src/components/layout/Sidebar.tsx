@@ -65,7 +65,9 @@ export function Sidebar({
 
         <nav className="space-y-1 p-4">
           {filteredItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+            const isActive = item.href === "/attendance"
+              ? pathname === "/attendance"
+              : pathname === item.href || pathname.startsWith(item.href + "/")
             return (
               <Link
                 key={item.href}

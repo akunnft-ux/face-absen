@@ -2,11 +2,11 @@
 export const dynamic = "force-dynamic"
 
 import { useCallback, useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { DataTable, type Column } from "@/components/shared/DataTable"
 import { Badge } from "@/components/ui/badge"
+import { getAttendanceHistory } from "@/actions/face-attendance"
 
 interface AttendanceWithEmployee {
   id: string
@@ -18,27 +18,28 @@ interface AttendanceWithEmployee {
 }
 
 export default function HistoryPage() {
-  const supabase = createClient()
   const [data, setData] = useState<AttendanceWithEmployee[]>([])
   const [loading, setLoading] = useState(true)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
 
   const fetchHistory = useCallback(async () => {
+    setLoading(true)
     const start = new Date(date)
     start.setHours(0, 0, 0, 0)
     const end = new Date(date)
     end.setHours(23, 59, 59, 999)
 
-    const { data: result } = await supabase
-      .from("face_attendance")
-      .select("*, employee:employees(nama_lengkap, nip)")
-      .gte("check_in_at", start.toISOString())
-      .lte("check_in_at", end.toISOString())
-      .order("check_in_at", { ascending: false })
-
-    if (result) setData(result as AttendanceWithEmployee[])
+    try {
+      const result = await getAttendanceHistory(
+        start.toISOString(),
+        end.toISOString()
+      )
+      setData(result as AttendanceWithEmployee[])
+    } catch {
+      setData([])
+    }
     setLoading(false)
-  }, [supabase, date])
+  }, [date])
 
   useEffect(() => {
     fetchHistory()
