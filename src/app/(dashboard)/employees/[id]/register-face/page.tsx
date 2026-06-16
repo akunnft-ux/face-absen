@@ -139,11 +139,12 @@ export default function RegisterFacePage() {
         }).draw(canvas)
 
         setFaceDetected(true)
-        setDescriptor(Array.from(detection.descriptor))
+        const arr = Array.from(detection.descriptor)
+        descriptorRef.current = arr
+        setDescriptor(arr)
         setQuality(detection.detection.score)
       } else {
         setFaceDetected(false)
-        setDescriptor(null)
       }
 
       animRef.current = requestAnimationFrame(detect)
@@ -158,9 +159,12 @@ export default function RegisterFacePage() {
     }
   }, [cameraActive, faceLoaded, detectFace])
 
-  const capture = useCallback(() => {
-    if (!videoRef.current || !descriptor) return
+  const descriptorRef = useRef<number[] | null>(null)
 
+  const capture = useCallback(() => {
+    if (!videoRef.current || !descriptorRef.current) return
+
+    const desc = descriptorRef.current
     const video = videoRef.current
     const tempCanvas = document.createElement("canvas")
     tempCanvas.width = video.videoWidth
@@ -170,12 +174,14 @@ export default function RegisterFacePage() {
     const imageData = tempCanvas.toDataURL("image/jpeg", 0.9)
 
     setCapturedImage(imageData)
+    setDescriptor(desc)
     stopCamera()
-  }, [descriptor, stopCamera])
+  }, [stopCamera])
 
   const retake = useCallback(() => {
     setCapturedImage(null)
     setDescriptor(null)
+    descriptorRef.current = null
     setError(null)
     setSaved(false)
     startCamera()
@@ -301,7 +307,7 @@ export default function RegisterFacePage() {
                   <Button
                     className="flex-1"
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={saving || !descriptor}
                   >
                     {saving ? (
                       <>
