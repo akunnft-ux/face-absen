@@ -78,6 +78,7 @@ export default function RegisterFacePage() {
       })
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        await videoRef.current.play()
       }
       streamRef.current = stream
       setCameraActive(true)

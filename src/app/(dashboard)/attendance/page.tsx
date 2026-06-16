@@ -65,7 +65,10 @@ export default function AttendancePage() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
       })
-      if (videoRef.current) videoRef.current.srcObject = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
       streamRef.current = stream
     } catch (e) {
       const err = e as DOMException
@@ -264,6 +267,7 @@ export default function AttendancePage() {
                   muted
                   playsInline
                   className="h-full w-full object-cover"
+                  onLoadedMetadata={() => videoRef.current?.play()}
                 />
                 <canvas
                   ref={canvasRef}
