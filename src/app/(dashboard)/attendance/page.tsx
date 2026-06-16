@@ -46,6 +46,7 @@ export default function AttendancePage() {
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ])
       setFaceLoaded(true)
+      setState("init")
     } catch {
       setError("Gagal memuat model pengenalan wajah.")
     }
@@ -205,7 +206,7 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {state === "init" && (
+      {(state === "init" || state === "loading_model") && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="rounded-full bg-primary/10 p-6 text-primary">
@@ -216,23 +217,30 @@ export default function AttendancePage() {
               Posisikan wajah di tengah frame dengan pencahayaan cukup.
               Sistem akan mencocokkan wajah dengan data registrasi.
             </p>
-            <Button size="lg" className="mt-8" onClick={startCheck}>
-              <Camera className="mr-2 h-5 w-5" />
-              Mulai Absen
+            <Button size="lg" className="mt-8" onClick={startCheck} disabled={!faceLoaded}>
+              {faceLoaded ? (
+                <>
+                  <Camera className="mr-2 h-5 w-5" />
+                  Mulai Absen
+                </>
+              ) : (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Memuat model...
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {(state === "loading_model" || state === "camera" || state === "matching") && (
+      {(state === "camera" || state === "matching") && (
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Kamera</CardTitle>
               <CardDescription>
-                {state === "loading_model"
-                  ? "Memuat model face recognition..."
-                  : state === "camera"
+                {state === "camera"
                   ? "Arahkan wajah ke kamera"
                   : "Mencocokkan wajah..."}
               </CardDescription>
@@ -256,12 +264,6 @@ export default function AttendancePage() {
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>Status</span>
-                  {state === "loading_model" && (
-                    <Badge variant="outline">
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      Loading model...
-                    </Badge>
-                  )}
                   {state === "camera" && (
                     <Badge variant={faceDetected ? "success" : "outline"}>
                       {faceDetected ? "Wajah terdeteksi" : "Mencari wajah..."}
