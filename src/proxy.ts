@@ -47,15 +47,20 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && path === "/login") {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single()
+    let role = user.user_metadata?.role as string | undefined
+
+    if (!role) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      role = profile?.role
+    }
 
     const url = request.nextUrl.clone()
     url.pathname =
-      profile?.role === "super_admin" || profile?.role === "admin"
+      role === "super_admin" || role === "admin"
         ? "/dashboard"
         : "/attendance"
     return NextResponse.redirect(url)
