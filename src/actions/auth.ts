@@ -10,21 +10,32 @@ export async function login(formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
+  const admin = createAdminClient()
+  const { data: existingUsers } = await admin.auth.admin.listUsers()
+  const authUser = existingUsers?.users?.find((u) => u.email === email)
+
+  if (authUser) {
+    const { data: profile } = await admin
+      .from("users")
+      .select("role")
+      .eq("id", authUser.id)
+      .single()
+
+    if (profile?.role) {
+      await admin.auth.admin.updateUserById(authUser.id, {
+        user_metadata: { role: profile.role },
+      })
+    }
+  }
+
   const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: "Email atau password salah" }
 
-  const admin = createAdminClient()
   const { data: profile } = await admin
     .from("users")
     .select("role")
     .eq("id", signInData.user!.id)
     .single()
-
-  if (profile?.role) {
-    await admin.auth.admin.updateUserById(signInData.user!.id, {
-      user_metadata: { role: profile.role },
-    })
-  }
 
   revalidatePath("/", "layout")
 
