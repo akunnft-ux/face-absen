@@ -1,6 +1,6 @@
 "use server"
 
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -11,13 +11,13 @@ export async function login(formData: FormData) {
   const password = formData.get("password") as string
 
   const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error || !signInData.user) return { error: "Email atau password salah" }
+  if (error) return { error: "Email atau password salah" }
 
-  const supabase2 = await createServerSupabaseClient()
-  const { data: profile } = await supabase2
+  const admin = createAdminClient()
+  const { data: profile } = await admin
     .from("users")
     .select("role")
-    .eq("id", signInData.user.id)
+    .eq("id", signInData.user!.id)
     .single()
 
   revalidatePath("/", "layout")
