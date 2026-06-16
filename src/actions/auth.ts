@@ -10,17 +10,14 @@ export async function login(formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { error: "Email atau password salah" }
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error || !signInData.user) return { error: "Email atau password salah" }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const { data: profile } = await supabase
+  const supabase2 = await createServerSupabaseClient()
+  const { data: profile } = await supabase2
     .from("users")
     .select("role")
-    .eq("id", user!.id)
+    .eq("id", signInData.user.id)
     .single()
 
   revalidatePath("/", "layout")
