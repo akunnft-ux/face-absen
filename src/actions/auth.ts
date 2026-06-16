@@ -20,6 +20,12 @@ export async function login(formData: FormData) {
     .eq("id", signInData.user!.id)
     .single()
 
+  if (profile?.role) {
+    await admin.auth.admin.updateUserById(signInData.user!.id, {
+      user_metadata: { role: profile.role },
+    })
+  }
+
   revalidatePath("/", "layout")
 
   if (profile?.role === "super_admin" || profile?.role === "admin") {
