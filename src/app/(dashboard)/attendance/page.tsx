@@ -32,6 +32,7 @@ export default function AttendancePage() {
   const [faceLoaded, setFaceLoaded] = useState(false)
   const [faceDetected, setFaceDetected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentEar, setCurrentEar] = useState(0)
   const [result, setResult] = useState<{
     employee: { id: string; nip: string; nama_lengkap: string; foto_registrasi_url: string }
     similarity: number
@@ -182,6 +183,7 @@ export default function AttendancePage() {
         }
 
         const ear = calculateEAR(detection.landmarks)
+        setCurrentEar(ear)
         liveness.processFrame(ear)
 
         if (liveness.statusRef.current === "timeout" || liveness.statusRef.current === "failed") {
@@ -227,6 +229,7 @@ export default function AttendancePage() {
         }
       } else {
         setFaceDetected(false)
+        setCurrentEar(0)
       }
 
       if (stateRef.current === "camera" || stateRef.current === "liveness") {
@@ -330,6 +333,14 @@ export default function AttendancePage() {
                     </Badge>
                   )}
                 </div>
+                {(state === "camera" || state === "liveness") && faceDetected && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>EAR</span>
+                    <span className={currentEar > 0.22 ? "text-emerald-500" : "text-amber-500"}>
+                      {currentEar.toFixed(3)}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

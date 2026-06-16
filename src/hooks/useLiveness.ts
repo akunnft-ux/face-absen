@@ -2,9 +2,9 @@
 
 import { useRef, useCallback, useState, useEffect } from "react"
 
-const EAR_THRESHOLD = 0.18
+const EAR_THRESHOLD = 0.22
 const MIN_BLINKS = 1
-const LIVENESS_TIMEOUT = 8000
+const LIVENESS_TIMEOUT = 12000
 
 export function useLiveness() {
   const [status, setStatus] = useState<"idle" | "watching" | "detected" | "failed" | "timeout">("idle")
@@ -55,7 +55,7 @@ export function useLiveness() {
     if (ear < EAR_THRESHOLD) {
       consecutiveClosedRef.current++
     } else {
-      if (consecutiveClosedRef.current >= 2 && consecutiveClosedRef.current <= 5) {
+      if (consecutiveClosedRef.current >= 1 && consecutiveClosedRef.current <= 10) {
         totalBlinksRef.current++
         setBlinkCount(totalBlinksRef.current)
 
