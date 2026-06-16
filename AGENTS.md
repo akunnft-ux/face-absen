@@ -26,6 +26,7 @@
 - `proxy.ts` adalah pengganti `middleware.ts` di Next.js 16
 - Semua form menggunakan `<form action={serverAction}>` pattern
 - Face recognition berjalan di browser via face-api.js (TinyFaceDetector + FaceRecognitionNet)
+- Model weights disimpan di `public/models/`, di-load sebagai `MODEL_URL = "/models"` (lokal, bukan CDN)
 - Liveness detection menggunakan EAR (Eye Aspect Ratio) blink detection
 - Face descriptor 128D disimpan di pgvector (cosine similarity)
 - Threshold match_face: 0.45 (cosine distance) → similarity > 0.55

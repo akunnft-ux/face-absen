@@ -11,7 +11,7 @@ import { registerFace } from "@/actions/face-registration"
 import { Camera, CheckCircle, XCircle, RefreshCw, Loader2 } from "lucide-react"
 import type { Employee } from "@/lib/types"
 
-const MODEL_URL = "https://unpkg.com/face-api.js@0.22.2/weights"
+const MODEL_URL = "/models"
 
 export default function RegisterFacePage() {
   const { id } = useParams<{ id: string }>()
