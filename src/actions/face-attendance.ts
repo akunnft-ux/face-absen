@@ -128,20 +128,6 @@ export async function getMonthlyRecap(year: number, month: number) {
     .gte("check_in_at", startDate)
     .lte("check_in_at", endDate)
 
-  const attendanceMap = new Map<string, number>()
-  let terlambatCount = 0
-
-  if (attendances) {
-    for (const a of attendances) {
-      const dateKey = a.check_in_at.slice(0, 10)
-      if (!attendanceMap.has(a.employee_id + dateKey)) {
-        attendanceMap.set(a.employee_id + dateKey, 1)
-        const hour = new Date(a.check_in_at).getHours()
-        if (hour >= 8) terlambatCount++
-      }
-    }
-  }
-
   const totalHariKerja = await getWorkingDays(year, month)
 
   return employees.map((emp) => {

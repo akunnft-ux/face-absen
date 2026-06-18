@@ -6,6 +6,20 @@ import type { UserInput } from "@/lib/types"
 
 export async function getUsers() {
   const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  const adminClient = createAdminClient()
+  const { data: profile } = await adminClient
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  if (profile?.role !== "super_admin") {
+    throw new Error("Akses ditolak. Hanya Super Admin yang dapat mengelola pengguna.")
+  }
+
   const { data, error } = await supabase
     .from("users")
     .select("*, employee:employees(nama_lengkap)")

@@ -83,7 +83,7 @@ export default function ReportPage() {
           onChange={(e) => setYear(Number(e.target.value))}
           className="flex h-10 rounded-lg border border-input bg-background px-3 text-sm w-24"
         >
-          {[2024, 2025, 2026, 2027].map((y) => (
+          {Array.from({ length: 4 }, (_, i) => now.getFullYear() - 2 + i).map((y) => (
             <option key={y} value={y}>
               {y}
             </option>

@@ -66,6 +66,37 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (user) {
+    let role = user.user_metadata?.role as string | undefined
+
+    if (!role) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      role = profile?.role
+    }
+
+    const petugasPaths = ["/attendance", "/attendance/history", "/settings", "/logout"]
+    const adminPaths = ["/users"]
+
+    if (role === "petugas") {
+      const allowed = petugasPaths.some((p) => path === p || path.startsWith(p + "/"))
+      if (!allowed) {
+        const url = request.nextUrl.clone()
+        url.pathname = "/attendance"
+        return NextResponse.redirect(url)
+      }
+    }
+
+    if (role !== "super_admin" && (path === "/users" || path.startsWith("/users/"))) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/dashboard"
+      return NextResponse.redirect(url)
+    }
+  }
+
   return supabaseResponse
 }
 

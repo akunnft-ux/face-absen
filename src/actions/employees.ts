@@ -30,6 +30,15 @@ export async function getEmployeeById(id: string) {
 
 export async function createEmployee(input: EmployeeInput) {
   const supabase = await createServerSupabaseClient()
+
+  const { data: existing } = await supabase
+    .from("employees")
+    .select("id")
+    .eq("nip", input.nip)
+    .maybeSingle()
+
+  if (existing) throw new Error(`NIP ${input.nip} sudah terdaftar.`)
+
   const { data, error } = await supabase
     .from("employees")
     .insert({ ...input })
