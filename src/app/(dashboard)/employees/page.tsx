@@ -118,7 +118,7 @@ export default function EmployeesPage() {
           }}
         >
           <DialogTrigger asChild>
-            <Button size="icon" className="h-10 w-10 rounded-full">
+            <Button size="icon" className="h-10 w-10 rounded-full" title="Tambah Pegawai">
               <Plus className="h-5 w-5" />
             </Button>
           </DialogTrigger>
@@ -243,6 +243,7 @@ export default function EmployeesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        title="Edit"
                         onClick={() => {
                           setEditingEmployee(emp)
                           setDialogOpen(true)
@@ -255,6 +256,7 @@ export default function EmployeesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          title="Hapus Foto"
                           onClick={() => handleDeleteFace(emp.id, emp.nama_lengkap)}
                         >
                           <CameraOff className="h-4 w-4 text-orange-500" />
@@ -264,6 +266,7 @@ export default function EmployeesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          title="Registrasi Wajah"
                           onClick={() => router.push(`/employees/${emp.id}/register-face`)}
                           disabled={!emp.status_aktif}
                         >
@@ -274,6 +277,7 @@ export default function EmployeesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        title={emp.status_aktif ? "Nonaktifkan" : "Aktifkan"}
                         onClick={() => handleToggleStatus(emp.id, emp.status_aktif)}
                       >
                         {emp.status_aktif ? (
@@ -286,6 +290,7 @@ export default function EmployeesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-red-500"
+                        title="Hapus"
                         onClick={() => handleDelete(emp.id, emp.nama_lengkap)}
                       >
                         <Trash2 className="h-4 w-4" />
