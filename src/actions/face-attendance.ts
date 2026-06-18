@@ -98,11 +98,7 @@ export async function getAttendanceHistory(
     .order("check_in_at", { ascending: false })
 
   if (startDate) query = query.gte("check_in_at", startDate)
-  if (endDate) {
-    const end = new Date(endDate)
-    end.setHours(23, 59, 59, 999)
-    query = query.lte("check_in_at", end.toISOString())
-  }
+  if (endDate) query = query.lte("check_in_at", endDate)
   if (employeeId) query = query.eq("employee_id", employeeId)
 
   const { data, error } = await query

@@ -1,15 +1,15 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { LoadingState } from "@/components/shared/LoadingState"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { CheckCircle, Clock, Calendar } from "lucide-react"
+import { getAttendanceHistory } from "@/actions/face-attendance"
 
-interface AttendanceWithEmployee {
+interface AttendanceRecord {
   id: string
   employee_id: string
   check_in_at: string
@@ -19,27 +19,28 @@ interface AttendanceWithEmployee {
 }
 
 export default function HistoryPage() {
-  const supabase = createClient()
-  const [data, setData] = useState<AttendanceWithEmployee[]>([])
+  const [data, setData] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
 
   const fetchHistory = useCallback(async () => {
-    const start = new Date(date)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(date)
-    end.setHours(23, 59, 59, 999)
+    setLoading(true)
+    try {
+      const start = new Date(date)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(date)
+      end.setHours(23, 59, 59, 999)
 
-    const { data: result } = await supabase
-      .from("face_attendance")
-      .select("*, employee:employees(nama_lengkap, nip)")
-      .gte("check_in_at", start.toISOString())
-      .lte("check_in_at", end.toISOString())
-      .order("check_in_at", { ascending: false })
-
-    if (result) setData(result as AttendanceWithEmployee[])
+      const result = await getAttendanceHistory(
+        start.toISOString(),
+        end.toISOString()
+      )
+      setData(result as AttendanceRecord[])
+    } catch (e) {
+      console.error("Gagal mengambil riwayat absensi:", e)
+    }
     setLoading(false)
-  }, [supabase, date])
+  }, [date])
 
   useEffect(() => {
     fetchHistory()
