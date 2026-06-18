@@ -17,7 +17,7 @@ import {
   Sun,
 } from "lucide-react"
 
-const MODEL_URL = "https://unpkg.com/face-api.js@0.22.2/weights"
+const MODEL_URL = "/models"
 
 type State = "init" | "loading_model" | "camera" | "liveness" | "matching" | "success" | "failed"
 
