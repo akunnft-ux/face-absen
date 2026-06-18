@@ -51,7 +51,7 @@ export default function AttendancePage() {
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ])
       setFaceLoaded(true)
-      setState("camera")
+      setState("init")
     } catch {
       setError("Gagal memuat model pengenalan wajah.")
     }
@@ -220,9 +220,18 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          <Button size="lg" className="mt-8 w-full max-w-sm h-14 text-base" onClick={startCheck}>
-            <Camera className="mr-2 h-5 w-5" />
-            Mulai Absen
+          <Button size="lg" className="mt-8 w-full max-w-sm h-14 text-base" onClick={startCheck} disabled={!faceLoaded}>
+            {faceLoaded ? (
+              <>
+                <Camera className="mr-2 h-5 w-5" />
+                Mulai Absen
+              </>
+            ) : (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Memuat model...
+              </>
+            )}
           </Button>
         </div>
       )}
