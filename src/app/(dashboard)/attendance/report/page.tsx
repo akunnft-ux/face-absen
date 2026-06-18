@@ -1,12 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DataTable, type Column } from "@/components/shared/DataTable"
+import { LoadingState } from "@/components/shared/LoadingState"
 import { getMonthlyRecap } from "@/actions/face-attendance"
 import { Download } from "lucide-react"
 import type { MonthlyRecap } from "@/lib/types"
@@ -51,69 +49,96 @@ export default function ReportPage() {
     XLSX.writeFile(wb, `rekap-absensi-${year}-${String(month).padStart(2, "0")}.xlsx`)
   }
 
-  const columns: Column<MonthlyRecap>[] = [
-    { key: "nip", header: "NIP", render: (r) => <span className="font-mono text-xs">{r.nip}</span> },
-    { key: "nama", header: "Nama", render: (r) => <span className="font-medium">{r.nama_lengkap}</span> },
-    { key: "hadir", header: "Hadir", render: (r) => <Badge variant="success">{r.total_hadir}</Badge> },
-    { key: "terlambat", header: "Terlambat", render: (r) => <Badge variant="warning">{r.total_terlambat}</Badge> },
-    { key: "alpha", header: "Alpha", render: (r) => <Badge variant={r.total_alpha > 0 ? "destructive" : "outline"}>{r.total_alpha}</Badge> },
-    {
-      key: "persentase",
-      header: "Persentase",
-      render: (r) => (
-        <Badge variant={r.persentase >= 80 ? "success" : r.persentase >= 60 ? "warning" : "destructive"}>
-          {r.persentase}%
-        </Badge>
-      ),
-    },
-  ]
+  const monthName = new Date(year, month - 1).toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+  })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Laporan Absensi</h1>
-          <p className="text-sm text-muted-foreground">
-            Rekap kehadiran pegawai per bulan
-          </p>
+          <h1 className="text-xl font-bold">Laporan</h1>
+          <p className="text-sm text-muted-foreground">Rekap kehadiran pegawai</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="month"
-            value={`${year}-${String(month).padStart(2, "0")}`}
-            onChange={(e) => {
-              const [y, m] = e.target.value.split("-")
-              setYear(Number(y))
-              setMonth(Number(m))
-            }}
-            className="w-48"
-          />
-          <Button variant="outline" onClick={exportExcel} disabled={data.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Export Excel
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={exportExcel} disabled={data.length === 0}>
+          <Download className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex gap-2">
+        <select
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+          className="flex h-10 rounded-lg border border-input bg-background px-3 text-sm flex-1"
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {new Date(2000, i).toLocaleDateString("id-ID", { month: "long" })}
+            </option>
+          ))}
+        </select>
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          className="flex h-10 rounded-lg border border-input bg-background px-3 text-sm w-24"
+        >
+          {[2024, 2025, 2026, 2027].map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">
-            Rekap Bulanan — {new Date(year, month - 1).toLocaleDateString("id-ID", {
-              month: "long",
-              year: "numeric",
-            })}
-          </CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">{monthName}</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={columns}
-            data={data}
-            loading={loading}
-            searchable={false}
-            emptyTitle="Belum ada data"
-            emptyDescription="Data rekap akan muncul setelah ada pegawai yang absen"
-            getKey={(r) => r.employee_id}
-          />
+          {loading ? (
+            <LoadingState />
+          ) : data.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Belum ada data untuk periode ini
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {data.map((r) => (
+                <div
+                  key={r.employee_id}
+                  className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{r.nama_lengkap}</p>
+                    <p className="text-xs text-muted-foreground">{r.nip}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">
+                        H:{r.total_hadir} T:{r.total_terlambat}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        A:{r.total_alpha}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        r.persentase >= 80
+                          ? "success"
+                          : r.persentase >= 60
+                          ? "warning"
+                          : "destructive"
+                      }
+                      className="text-[10px]"
+                    >
+                      {r.persentase}%
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

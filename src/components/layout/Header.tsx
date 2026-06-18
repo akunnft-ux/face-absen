@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Menu, LogOut } from "lucide-react"
+import { Menu, LogOut, Camera } from "lucide-react"
 import type { User } from "@/lib/types"
 
 export function Header({
@@ -32,19 +32,28 @@ export function Header({
     : "U"
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-      <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/95 backdrop-blur px-4">
+      <Button variant="ghost" size="icon" className="lg:hidden shrink-0" onClick={onMenuClick}>
         <Menu className="h-5 w-5" />
       </Button>
+
+      <div className="flex items-center gap-2 lg:hidden">
+        <Camera className="h-5 w-5 text-primary" />
+        <span className="text-sm font-bold">Face-Absen</span>
+      </div>
+
+      <div className="hidden lg:flex items-center gap-2">
+        <Camera className="h-5 w-5 text-primary" />
+        <span className="text-lg font-bold">Face-Absen</span>
+      </div>
 
       <div className="flex-1" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src="" alt={user.full_name} />
-              <AvatarFallback>{initials}</AvatarFallback>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
@@ -58,7 +67,7 @@ export function Header({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            Keluar
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

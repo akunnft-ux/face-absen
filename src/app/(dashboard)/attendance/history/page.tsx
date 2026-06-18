@@ -1,12 +1,13 @@
 "use client"
-export const dynamic = "force-dynamic"
 
 import { useCallback, useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/client"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { DataTable, type Column } from "@/components/shared/DataTable"
 import { Badge } from "@/components/ui/badge"
-import { getAttendanceHistory } from "@/actions/face-attendance"
+import { LoadingState } from "@/components/shared/LoadingState"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { CheckCircle, Clock, Calendar } from "lucide-react"
 
 interface AttendanceWithEmployee {
   id: string
@@ -18,87 +19,45 @@ interface AttendanceWithEmployee {
 }
 
 export default function HistoryPage() {
+  const supabase = createClient()
   const [data, setData] = useState<AttendanceWithEmployee[]>([])
   const [loading, setLoading] = useState(true)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
 
   const fetchHistory = useCallback(async () => {
-    setLoading(true)
     const start = new Date(date)
     start.setHours(0, 0, 0, 0)
     const end = new Date(date)
     end.setHours(23, 59, 59, 999)
 
-    try {
-      const result = await getAttendanceHistory(
-        start.toISOString(),
-        end.toISOString()
-      )
-      setData(result as AttendanceWithEmployee[])
-    } catch {
-      setData([])
-    }
+    const { data: result } = await supabase
+      .from("face_attendance")
+      .select("*, employee:employees(nama_lengkap, nip)")
+      .gte("check_in_at", start.toISOString())
+      .lte("check_in_at", end.toISOString())
+      .order("check_in_at", { ascending: false })
+
+    if (result) setData(result as AttendanceWithEmployee[])
     setLoading(false)
-  }, [date])
+  }, [supabase, date])
 
   useEffect(() => {
     fetchHistory()
   }, [fetchHistory])
 
-  const columns: Column<AttendanceWithEmployee>[] = [
-    {
-      key: "employee",
-      header: "Pegawai",
-      render: (a) => (
-        <div>
-          <p className="font-medium">{a.employee?.nama_lengkap}</p>
-          <p className="text-xs text-muted-foreground">{a.employee?.nip}</p>
-        </div>
-      ),
-    },
-    {
-      key: "check_in_at",
-      header: "Waktu Absen",
-      render: (a) => (
-        <span className="text-sm">
-          {new Date(a.check_in_at).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })}
-        </span>
-      ),
-    },
-    {
-      key: "match_confidence",
-      header: "Kecocokan",
-      render: (a) => (
-        <Badge variant={a.match_confidence > 0.65 ? "success" : "warning"}>
-          {Math.round(a.match_confidence * 100)}%
-        </Badge>
-      ),
-    },
-    {
-      key: "liveness_passed",
-      header: "Liveness",
-      render: (a) =>
-        a.liveness_passed ? (
-          <Badge variant="success">Lolos</Badge>
-        ) : (
-          <Badge variant="destructive">Gagal</Badge>
-        ),
-    },
-  ]
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Riwayat Absensi</h1>
+          <h1 className="text-xl font-bold">Riwayat Absensi</h1>
           <p className="text-sm text-muted-foreground">
-            Data absensi face recognition
+            {data.length} pegawai absen hari ini
           </p>
         </div>
+      </div>
+
+      <div className="relative">
+        <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="date"
           value={date}
@@ -106,19 +65,50 @@ export default function HistoryPage() {
             setDate(e.target.value)
             setLoading(true)
           }}
-          className="w-48"
+          className="pl-10 h-12"
         />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data}
-        loading={loading}
-        searchable={false}
-        emptyTitle="Belum ada data absensi"
-        emptyDescription="Pegawai belum melakukan absen pada tanggal ini"
-        getKey={(a) => a.id}
-      />
+      {loading ? (
+        <LoadingState />
+      ) : data.length === 0 ? (
+        <EmptyState
+          icon={Clock}
+          title="Belum ada data absensi"
+          description="Pegawai belum melakukan absen pada tanggal ini"
+        />
+      ) : (
+        <div className="space-y-2">
+          {data.map((a) => (
+            <Card key={a.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
+                      <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{a.employee?.nama_lengkap}</p>
+                      <p className="text-xs text-muted-foreground">{a.employee?.nip}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">
+                      {new Date(a.check_in_at).toLocaleTimeString("id-ID", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <Badge variant={a.match_confidence > 0.65 ? "success" : "warning"} className="text-[10px]">
+                      {Math.round(a.match_confidence * 100)}%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

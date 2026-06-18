@@ -18,12 +18,12 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin"] },
-  { href: "/attendance", label: "Absen Wajah", icon: Camera, roles: ["super_admin", "admin", "petugas"] },
-  { href: "/attendance/history", label: "Riwayat Absensi", icon: History, roles: ["super_admin", "admin", "petugas"] },
+  { href: "/attendance", label: "Absen", icon: Camera, roles: ["super_admin", "admin", "petugas"] },
+  { href: "/attendance/history", label: "Riwayat", icon: History, roles: ["super_admin", "admin", "petugas"] },
   { href: "/attendance/report", label: "Laporan", icon: BarChart3, roles: ["super_admin", "admin"] },
   { href: "/employees", label: "Pegawai", icon: Users, roles: ["super_admin", "admin"] },
   { href: "/users", label: "Pengguna", icon: UserCog, roles: ["super_admin"] },
-  { href: "/settings", label: "Pengaturan", icon: Settings, roles: ["super_admin", "admin", "petugas"] },
+  { href: "/settings", label: "Setelan", icon: Settings, roles: ["super_admin", "admin", "petugas"] },
 ]
 
 export function Sidebar({
@@ -55,7 +55,8 @@ export function Sidebar({
         )}
       >
         <div className="flex h-16 items-center justify-between border-b px-6">
-          <Link href="/dashboard" className="text-lg font-bold">
+          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-bold">
+            <Camera className="h-5 w-5 text-primary" />
             Face-Absen
           </Link>
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
@@ -65,16 +66,14 @@ export function Sidebar({
 
         <nav className="space-y-1 p-4">
           {filteredItems.map((item) => {
-            const isActive = item.href === "/attendance"
-              ? pathname === "/attendance"
-              : pathname === item.href || pathname.startsWith(item.href + "/")
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"

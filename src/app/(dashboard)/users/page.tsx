@@ -1,11 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -13,17 +11,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DataTable, type Column } from "@/components/shared/DataTable"
+import { LoadingState } from "@/components/shared/LoadingState"
 import { createUser, deleteUser, updateUserRole, getUsers } from "@/actions/users"
 import { getEmployees } from "@/actions/employees"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, UserCog } from "lucide-react"
 import type { User, Employee } from "@/lib/types"
 
 export default function UsersPage() {
@@ -84,70 +77,30 @@ export default function UsersPage() {
     }
   }
 
-  const columns: Column<User>[] = [
-    {
-      key: "email",
-      header: "Email",
-      render: (u) => <span className="font-medium">{u.email}</span>,
-    },
-    {
-      key: "full_name",
-      header: "Nama",
-      render: (u) => u.full_name || "-",
-    },
-    {
-      key: "role",
-      header: "Role",
-      render: (u) => (
-        <Select
-          defaultValue={u.role}
-          onValueChange={(v) => handleRoleChange(u.id, v)}
-        >
-          <SelectTrigger className="h-8 w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="super_admin">Super Admin</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="petugas">Petugas</SelectItem>
-          </SelectContent>
-        </Select>
-      ),
-    },
-    {
-      key: "actions",
-      header: "Aksi",
-      render: (u) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => handleDelete(u.id, u.email)}
-        >
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </Button>
-      ),
-    },
-  ]
+  const roleLabel: Record<string, { label: string; variant: "default" | "success" | "warning" | "destructive" }> = {
+    super_admin: { label: "Super Admin", variant: "destructive" },
+    admin: { label: "Admin", variant: "warning" },
+    petugas: { label: "Petugas", variant: "default" },
+  }
+
+  if (loading) return <LoadingState />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Pengguna</h1>
-          <p className="text-sm text-muted-foreground">
-            {users.length} user terdaftar
-          </p>
+          <h1 className="text-xl font-bold">Pengguna</h1>
+          <p className="text-sm text-muted-foreground">{users.length} user terdaftar</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Tambah User
+            <Button size="icon" className="h-10 w-10 rounded-full">
+              <Plus className="h-5 w-5" />
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Tambah User Baru</DialogTitle>
+              <DialogTitle>Tambah User</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
@@ -167,7 +120,7 @@ export default function UsersPage() {
                 <select
                   id="role"
                   name="role"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
                   defaultValue="petugas"
                 >
                   <option value="super_admin">Super Admin</option>
@@ -176,11 +129,11 @@ export default function UsersPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="employee_id">Link ke Pegawai (opsional)</Label>
+                <Label htmlFor="employee_id">Link Pegawai</Label>
                 <select
                   id="employee_id"
                   name="employee_id"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
                 >
                   <option value="">Tidak ada</option>
                   {employees.map((e) => (
@@ -190,27 +143,52 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
-              <Button type="submit" className="w-full">
-                Buat User
-              </Button>
+              <Button type="submit" className="w-full h-12">Buat User</Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <DataTable
-            columns={columns}
-            data={users}
-            loading={loading}
-            searchable={false}
-            emptyTitle="Belum ada user"
-            emptyDescription="Tambahkan user pertama untuk memberikan akses"
-            getKey={(u) => u.id}
-          />
-        </CardContent>
-      </Card>
+      {users.length === 0 ? (
+        <div className="flex flex-col items-center py-12 text-center">
+          <UserCog className="h-12 w-12 text-muted-foreground/50 mb-4" />
+          <p className="text-sm font-medium">Belum ada user</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {users.map((u) => (
+            <Card key={u.id}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{u.full_name || u.email}</p>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    >
+                      <option value="super_admin">Super Admin</option>
+                      <option value="admin">Admin</option>
+                      <option value="petugas">Petugas</option>
+                    </select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500"
+                      onClick={() => handleDelete(u.id, u.email)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
