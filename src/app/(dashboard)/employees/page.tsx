@@ -15,9 +15,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { createEmployee, updateEmployee, toggleEmployeeStatus } from "@/actions/employees"
+import { createEmployee, updateEmployee, toggleEmployeeStatus, deleteEmployee } from "@/actions/employees"
+import { deleteFacePhoto } from "@/actions/face-registration"
 import { LoadingState } from "@/components/shared/LoadingState"
-import { Plus, Pencil, Camera, Power, PowerOff, Search, Users, ScanFace } from "lucide-react"
+import { Plus, Pencil, Camera, Power, PowerOff, Search, Users, ScanFace, Trash2, CameraOff } from "lucide-react"
 import type { Employee } from "@/lib/types"
 
 export default function EmployeesPage() {
@@ -76,6 +77,26 @@ export default function EmployeesPage() {
   const handleToggleStatus = async (id: string, current: boolean) => {
     await toggleEmployeeStatus(id, !current)
     fetchEmployees()
+  }
+
+  const handleDelete = async (id: string, nama: string) => {
+    if (!confirm(`Hapus pegawai ${nama}? Semua data absensi juga akan dihapus.`)) return
+    try {
+      await deleteEmployee(id)
+      fetchEmployees()
+    } catch (e) {
+      alert(String(e))
+    }
+  }
+
+  const handleDeleteFace = async (id: string, nama: string) => {
+    if (!confirm(`Hapus data wajah ${nama}?`)) return
+    try {
+      await deleteFacePhoto(id)
+      fetchEmployees()
+    } catch (e) {
+      alert(String(e))
+    }
   }
 
   const terdaftar = employees.filter((e) => e.is_terdaftar_wajah).length
@@ -230,7 +251,14 @@ export default function EmployeesPage() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       {emp.is_terdaftar_wajah ? (
-                        <Badge variant="success" className="text-[10px]">Wajah</Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDeleteFace(emp.id, emp.nama_lengkap)}
+                        >
+                          <CameraOff className="h-4 w-4 text-orange-500" />
+                        </Button>
                       ) : (
                         <Button
                           variant="ghost"
@@ -253,6 +281,14 @@ export default function EmployeesPage() {
                         ) : (
                           <Power className="h-4 w-4 text-emerald-500" />
                         )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500"
+                        onClick={() => handleDelete(emp.id, emp.nama_lengkap)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

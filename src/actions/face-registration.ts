@@ -45,6 +45,28 @@ export async function registerFace(
   revalidatePath(`/employees/${employeeId}`)
 }
 
+export async function deleteFacePhoto(employeeId: string) {
+  const supabase = createAdminClient()
+
+  const { data: descriptors } = await supabase
+    .from("face_descriptors")
+    .select("foto_registrasi_url")
+    .eq("employee_id", employeeId)
+
+  if (descriptors) {
+    for (const d of descriptors) {
+      const path = d.foto_registrasi_url.split("/storage/v1/object/public/face-photos/")[1]
+      if (path) await supabase.storage.from("face-photos").remove([path])
+    }
+  }
+
+  await supabase.from("face_descriptors").delete().eq("employee_id", employeeId)
+  await supabase.from("employees").update({ is_terdaftar_wajah: false }).eq("id", employeeId)
+
+  revalidatePath("/employees")
+  revalidatePath(`/employees/${employeeId}`)
+}
+
 export async function registerFaceForMultiple(
   employeeIds: string[],
   descriptor: number[],

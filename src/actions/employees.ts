@@ -74,3 +74,26 @@ export async function toggleEmployeeStatus(id: string, status: boolean) {
   if (error) throw new Error(error.message)
   revalidatePath("/employees")
 }
+
+export async function deleteEmployee(id: string) {
+  const supabase = createAdminClient()
+
+  const { data: descriptors } = await supabase
+    .from("face_descriptors")
+    .select("foto_registrasi_url")
+    .eq("employee_id", id)
+
+  if (descriptors) {
+    for (const d of descriptors) {
+      const path = d.foto_registrasi_url.split("/storage/v1/object/public/face-photos/")[1]
+      if (path) await supabase.storage.from("face-photos").remove([path])
+    }
+  }
+
+  await supabase.from("face_attendance").delete().eq("employee_id", id)
+  await supabase.from("users").update({ employee_id: null }).eq("employee_id", id)
+  await supabase.from("face_descriptors").delete().eq("employee_id", id)
+  await supabase.from("employees").delete().eq("id", id)
+
+  revalidatePath("/employees")
+}

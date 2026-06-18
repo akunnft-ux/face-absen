@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useCallback, useState, useEffect } from "react"
+import { useRef, useCallback, useState, useEffect, useMemo } from "react"
 
 const BASELINE_FRAMES = 10
 const DROP_RATIO = 0.75
@@ -88,7 +88,7 @@ export function useLiveness() {
     return () => clearTimeout(timerRef.current)
   }, [])
 
-  return {
+  return useMemo(() => ({
     status,
     blinkCount,
     statusRef,
@@ -97,5 +97,5 @@ export function useLiveness() {
     processFrame,
     getScore,
     isLive: status === "detected",
-  }
+  }), [status, blinkCount, start, reset, processFrame, getScore, statusRef])
 }
