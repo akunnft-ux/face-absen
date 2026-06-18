@@ -29,6 +29,8 @@ export default function AttendancePage() {
   const animRef = useRef<number>(0)
   const faceapiRef = useRef<Awaited<typeof import("face-api.js")> | null>(null)
 
+  const livenessStartedRef = useRef(false)
+
   const [state, setState] = useState<State>("init")
   const [faceLoaded, setFaceLoaded] = useState(false)
   const [faceDetected, setFaceDetected] = useState(false)
@@ -106,18 +108,18 @@ export default function AttendancePage() {
     setError(null)
     setResult(null)
     setState("camera")
+    livenessStartedRef.current = false
     liveness.reset()
     await startCamera()
   }, [liveness, startCamera])
 
   useEffect(() => {
-    if (state !== "camera" || !faceLoaded || !videoRef.current || !canvasRef.current) return
+    if ((state !== "camera" && state !== "liveness") || !faceLoaded || !videoRef.current || !canvasRef.current) return
 
     const faceapi = faceapiRef.current!
     const video = videoRef.current!
     const canvas = canvasRef.current!
 
-    let livenessStarted = false
     let descriptor: Float32Array | null = null
 
     const detect = async () => {
@@ -148,9 +150,9 @@ export default function AttendancePage() {
         setFaceDetected(true)
         descriptor = detection.descriptor
 
-        if (!livenessStarted) {
+        if (!livenessStartedRef.current) {
           liveness.start()
-          livenessStarted = true
+          livenessStartedRef.current = true
           setState("liveness")
         }
 
