@@ -218,6 +218,17 @@ export default function EmployeesPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setEditingEmployee(emp)
+                          setDialogOpen(true)
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       {emp.is_terdaftar_wajah ? (
                         <Badge variant="success" className="text-[10px]">Wajah</Badge>
                       ) : (

@@ -118,12 +118,21 @@ export default function AttendancePage() {
     let descriptor: Float32Array | null = null
 
     const detect = async () => {
-      if (!streamRef.current) return
+      if (!streamRef.current) {
+        animRef.current = requestAnimationFrame(detect)
+        return
+      }
 
-      const detection = await faceapi
-        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor()
+      let detection: any
+      try {
+        detection = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor()
+      } catch {
+        animRef.current = requestAnimationFrame(detect)
+        return
+      }
 
       const ctx = canvas.getContext("2d")!
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -160,6 +169,8 @@ export default function AttendancePage() {
           tempCanvas.height = video.videoHeight
           tempCanvas.getContext("2d")!.drawImage(video, 0, 0)
           const imageData = tempCanvas.toDataURL("image/jpeg", 0.9)
+
+          if (!descriptor) return
 
           try {
             const res = await faceCheckIn(
